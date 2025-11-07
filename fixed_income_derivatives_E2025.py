@@ -12,19 +12,19 @@ def zcb_prices_from_spot_rates(T,R,type = "continuous"):
     p = np.zeros([M])
     if type == "continuous":
         for i in range(0,M):
-            if T[i] < 1e-8:
+            if T[i] < 1e-10:
                 p[i] = 1
             else:
                 p[i] = np.exp(-R[i]*T[i])
     elif type == "simple":
         for i in range(0,M):
-            if T[i] < 1e-8:
+            if T[i] < 1e-10:
                 p[i] = 1
             else:
                 p[i] = 1/(1+R[i]*T[i])
     elif type == "discrete":
         for i in range(0,M):
-            if T[i] < 1e-8:
+            if T[i] < 1e-10:
                 p[i] = 1
             else:
                 p[i] = 1/(1+R[i])**T[i]
@@ -35,26 +35,26 @@ def spot_rates_from_zcb_prices(T,p,type = "continuous"):
     R = np.zeros([M])
     if type == "continuous":
         for i in range(0,M):
-            if T[i] < 1e-12:
+            if T[i] < 1e-10:
                 R[i] = np.nan
             else:
                 R[i] = -np.log(p[i])/T[i]
     elif type == "simple":
         for i in range(0,M):
-            if T[i] < 1e-12:
+            if T[i] < 1e-10:
                 R[i] = np.nan
             else:
                 R[i] = (1-p[i])/(T[i]*p[i])
     elif type == "discrete":
         for i in range(0,M):
-            if T[i] < 1e-12:
+            if T[i] < 1e-10:
                 R[i] = np.nan
             else:
                 R[i] = p[i]**(-1/T[i]) - 1
     return R
 
 def forward_rates_from_zcb_prices(T,p,horizon = 1,type = "continuous"):
-    # horizon = 0 corresponds to approximated instantaneous forward rates. Note that the first entry of T is assumed to be T[0] = 0
+    # horizon = 0 corresponds to approximated instantaneous forward rates.
     M = len(T)
     f = np.nan*np.ones([M])
     if type == "continuous":
@@ -97,72 +97,6 @@ def forward_rates_from_zcb_prices(T,p,horizon = 1,type = "continuous"):
                 f[i] = (p[i-horizon]/p[i])**(1/(T[i]-T[i-horizon])) - 1
                 i += 1
     return f
-
-# Interest Rate Swap
-def accrual_factor_from_zcb_prices(t,T_n,T_N,fixed_freq,T,p):
-    T_fix = []
-    if type(fixed_freq) == str:
-        if fixed_freq == "quarterly":
-            for i in range(1,int((T_N-T_n)*4) + 1):
-                if T_n + i*0.25 > t:
-                    T_fix.append(T_n + i*0.25)
-        elif fixed_freq == "semiannual":
-            for i in range(1,int((T_N-T_n)*2) + 1):
-                if T_n + i*0.5 > t:
-                    T_fix.append(T_n + i*0.5)
-        elif fixed_freq == "annual":
-            for i in range(1,int(T_N-T_n) + 1):
-                if T_n + i > t:
-                    T_fix.append(T_n + i)
-    elif type(fixed_freq) == int or type(fixed_freq) == float or type(fixed_freq) == np.int32 or type(fixed_freq) == np.int64 or type(fixed_freq) == np.float64:
-        for i in range(1,int((T_N-T_n)/fixed_freq) + 1):
-            if T_n + i*fixed_freq > t:
-                T_fix.append(T_n + i*fixed_freq)
-    p_fix = np.array(for_values_in_list_find_value_return_value(T_fix,T,p))
-    T_fix = np.array(T_fix)
-    S = (T_fix[0] - T_n)*p_fix[0]
-    for i in range(1,len(T_fix)):
-        S += (T_fix[i] - T_fix[i-1])*p_fix[i]
-    return S
-
-def swap_rate_from_zcb_prices(t,T_n,T_N,fixed_freq,T,p,float_freq = 0,L = 0):
-    S = accrual_factor_from_zcb_prices(t,T_n,T_N,fixed_freq,T,p)
-    if t <= T_n:
-        if T_n < 1e-6:
-            p_n = 1
-        else:
-            Ind_n, output_n = find_value_return_value(T_n,T,p)
-            if Ind_n == True:
-                p_n = output_n[0][1]
-        Ind_N, output_N = find_value_return_value(T_N,T,p)
-        if Ind_N == True:
-            p_N = output_N[0][1]
-        R = (p_n-p_N)/S
-    elif t > T_n:
-        if float_freq == 0:
-            print(f"WARNING! Since t is after inception, 'float_freq' must be given as an argument")
-            R = np.nan
-        else:
-            if type(float_freq) == str:
-                if float_freq == "quarterly":
-                    float_freq = 0.25
-                elif float_freq == "semiannual":
-                    float_freq = 0.5
-                elif fixed_freq == "annual":
-                    float_freq = 1
-            i, I_done = 0, False
-            while I_done == False and i*float_freq < T_N:
-                if i*float_freq >= t:
-                    T_n = i*float_freq
-                    I_done = True
-                i += 1
-            if I_done == True:
-                [p_n,p_N] = for_values_in_list_find_value_return_value([T_n,T_N],T,p)
-                R = (((T_n-t)*L+1)*p_n-p_N)/S
-            else:
-                print(f"WARNING! Not able to compute the par swap rate")
-                R = np.nan
-    return R, S
 
 # Fixed rate bond
 def macauley_duration(pv,T,C,ytm):
@@ -210,6 +144,76 @@ def ytm_obj(ytm,pv,T,C,scaling = 1):
     sse = scaling*(pv-pv_new)**2
     return sse
 
+# Interest Rate Swap
+def accrual_factor_from_zcb_prices(t,T_n,T_N,fixed_freq,T,p):
+    T_fix = []
+    if type(fixed_freq) == str:
+        if fixed_freq == "quarterly":
+            alpha = 0.25
+            for i in range(1,int((T_N-T_n)*4) + 1):
+                if T_n + i*alpha > t:
+                    T_fix.append(T_n + i*alpha - t)
+        elif fixed_freq == "semiannual":
+            alpha = 0.5
+            for i in range(1,int((T_N-T_n)*2) + 1):
+                if T_n + i*alpha > t:
+                    T_fix.append(T_n + i*alpha - t)
+        elif fixed_freq == "annual":
+            alpha = 1
+            for i in range(1,int(T_N-T_n) + 1):
+                if T_n + i*alpha > t:
+                    T_fix.append(T_n + i - t)
+    elif type(fixed_freq) == int or type(fixed_freq) == float or type(fixed_freq) == np.int32 or type(fixed_freq) == np.int64 or type(fixed_freq) == np.float64:
+        for i in range(1,int((T_N-T_n)/fixed_freq) + 1):
+            alpha = fixed_freq
+            if T_n + i*fixed_freq > t:
+                T_fix.append(T_n + i*fixed_freq - t)
+    p_fix = np.array(for_values_in_list_find_value_return_value(T_fix,T,p, precision = 0.01))
+    T_fix = np.array(T_fix)
+    S = 0
+    for i in range(0,len(T_fix)):
+        S += alpha*p_fix[i]
+    return S
+
+def swap_rate_from_zcb_prices(t,T_n,T_N,fixed_freq,T,p,float_freq = 0,L = 0):
+    S = accrual_factor_from_zcb_prices(t,T_n,T_N,fixed_freq,T,p)
+    if t <= T_n:
+        if T_n < 1e-6:
+            p_n = 1
+        else:
+            Ind_n, output_n = find_value_return_value(T_n,T,p)
+            if Ind_n == True:
+                p_n = output_n[0][1]
+        Ind_N, output_N = find_value_return_value(T_N,T,p)
+        if Ind_N == True:
+            p_N = output_N[0][1]
+        R = (p_n-p_N)/S
+    elif t > T_n:
+        if float_freq == 0:
+            print(f"WARNING! Since t is after inception, 'float_freq' must be given as an argument")
+            R = np.nan
+        else:
+            if type(float_freq) == str:
+                if float_freq == "quarterly":
+                    float_freq = 0.25
+                elif float_freq == "semiannual":
+                    float_freq = 0.5
+                elif fixed_freq == "annual":
+                    float_freq = 1
+            i, I_done = 0, False
+            while I_done == False and i*float_freq < T_N:
+                if i*float_freq >= t:
+                    T_first_fixing = i*float_freq - t
+                    I_done = True
+                i += 1
+            if I_done == True:
+                [p_n,p_N] = for_values_in_list_find_value_return_value([T_first_fixing,T_N-t],T,p,precision = 0.01)
+                R = ((float_freq*L+1)*p_n-p_N)/S
+            else:
+                print(f"WARNING! Not able to compute the par swap rate")
+                R = np.nan
+    return R, S
+
 # Vasicek short rate model
 def zcb_price_vasicek(r0,a,b,sigma,T):
     if type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.float64:
@@ -252,6 +256,7 @@ def spot_rate_vasicek(r0,a,b,sigma,T):
     return r
 
 def forward_rate_vasicek(r0,a,b,sigma,T):
+    # This function computes instantaneous forward rates assuming present time t=0.
     if type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.int64 or type(T) == np.float64:
         B = (1/a)*(1-np.exp(-a*T))
         B_T = np.exp(-a*T)
@@ -424,8 +429,835 @@ def fit_vasicek_no_sigma_obj(param,sigma,R_star,T,scaling = 1):
         sse += scaling*(R_fit[m] - R_star[m])**2
     return sse
 
+# Cox-Ingersoll-Ross short rate model
+def zcb_price_cir(r0,a,b,sigma,T):
+    if type(T) == int or type(T) == float or type(T) == np.float32 or type(T) == np.float64:
+        gamma = np.sqrt(a**2+2*sigma**2)
+        D = (gamma+a)*(np.exp(gamma*T)-1)+2*gamma
+        A = ((2*gamma*np.exp(0.5*T*(a+gamma)))/D)**((2*a*b)/(sigma**2))
+        B = 2*(np.exp(gamma*T)-1)/D
+        p = A*np.exp(-r0*B)
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        M = len(T)
+        p = np.zeros([M])
+        for i in range(0,M):
+            gamma = np.sqrt(a**2+2*sigma**2)
+            D = (gamma+a)*(np.exp(gamma*T[i])-1)+2*gamma
+            A = ((2*gamma*np.exp(0.5*T[i]*(a+gamma)))/D)**((2*a*b)/(sigma**2))
+            B = 2*(np.exp(gamma*T[i])-1)/D
+            p[i] = A*np.exp(-r0*B)
+    else:
+        print(f"T not a recognized type")
+        p = False
+    return p
 
+def spot_rate_cir(r0,a,b,sigma,T):
+    if type(T) == int or type(T) == float or type(T) == np.float64:
+        if T < 1e-6:
+            r = r0
+        else:
+            gamma = np.sqrt(a**2+2*sigma**2)
+            D = (gamma+a)*(np.exp(gamma*T)-1)+2*gamma
+            A = ((2*gamma*np.exp(0.5*T*(a+gamma)))/D)**((2*a*b)/(sigma**2))
+            B = 2*(np.exp(gamma*T)-1)/D
+            r = (-np.log(A)+r0*B)/(T)
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        M = len(T)
+        r = np.zeros([M])
+        for i in range(0,M):
+            if T[i] < 1e-6:
+                r[i] = r0
+            else:
+                gamma = np.sqrt(a**2+2*sigma**2)
+                D = (gamma+a)*(np.exp(gamma*T[i])-1)+2*gamma
+                A = ((2*gamma*np.exp(0.5*T[i]*(a+gamma)))/D)**((2*a*b)/(sigma**2))
+                B = 2*(np.exp(gamma*T[i])-1)/D
+                r[i] = (-np.log(A)+r0*B)/(T[i])
+    else:
+        print(f"T not a recognized type")
+        r = False
+    return r
 
+def forward_rate_cir(r0,a,b,sigma,T):
+    if type(T) == int or type(T) == float or type(T) == np.float64:
+        if T < 1e-6:
+            f = r0
+        else:
+            c = (2*a*b)/(sigma**2)
+            gamma = np.sqrt(a**2+2*sigma**2)
+            N = 2*gamma*np.exp(0.5*T*(a+gamma))
+            N_T = gamma*(gamma+a)*np.exp(0.5*T*(a+gamma))
+            D = (gamma+a)*(np.exp(gamma*T)-1)+2*gamma
+            D_T = gamma*(a+gamma)*np.exp(gamma*T)
+            M = 2*(np.exp(gamma*T)-1)
+            M_T = 2*gamma*np.exp(gamma*T)
+            f = c*(-N_T/N+D_T/D)+r0*(M_T*D-M*D_T)/D**2
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        N = len(T)
+        f = np.zeros([N])
+        for i in range(0,N):
+            if T[i] < 1e-6:
+                f[i] = r0
+            else:
+                c = (2*a*b)/(sigma**2)
+                gamma = np.sqrt(a**2+2*sigma**2)
+                N = 2*gamma*np.exp(0.5*T[i]*(a+gamma))
+                N_T = gamma*(gamma+a)*np.exp(0.5*T[i]*(a+gamma))
+                D = (gamma+a)*(np.exp(gamma*T[i])-1)+2*gamma
+                D_T = gamma*(a+gamma)*np.exp(gamma*T[i])
+                M = 2*(np.exp(gamma*T[i])-1)
+                M_T = 2*gamma*np.exp(gamma*T[i])
+                f[i] = c*(-N_T/N+D_T/D)+r0*(M_T*D-M*D_T)/D**2
+    else:
+        print(f"T not a recognized type")
+        f = False
+    return f
+
+def mean_cir(r0,a,b,sigma,T):
+    if T == np.inf:
+        mean = b
+    else:
+        df = (4*a*b)/sigma**2
+        nc = (4*a*np.exp(-a*T)*r0)/(sigma**2*(1-np.exp(-a*T)))
+        factor = (sigma**2*(1-np.exp(-a*T)))/(4*a)
+        mean = factor*ncx2.stats(df,nc,moments='m')
+    return mean
+
+def stdev_cir(r0,a,b,sigma,T):
+    if T == np.inf:
+        stdev = sigma*np.sqrt(b/(2*a))
+    else:
+        df = (4*a*b)/sigma**2
+        nc = (4*a*np.exp(-a*T)*r0)/(sigma**2*(1-np.exp(-a*T)))
+        factor = (sigma**2*(1-np.exp(-a*T)))/(4*a)
+        stdev = factor*np.sqrt(ncx2.stats(df,nc,moments='v'))
+    return stdev
+
+def ci_cir(r0,a,b,sigma,T,size_ci,type_ci = "two_sided"):
+    if type(T) == int or type(T) == float or type(T) == np.float64:
+        if type_ci == "lower":
+            if T < 1e-6:
+                lb, ub = r0, r0
+            else:
+                df = (4*a*b)/sigma**2
+                nc = (4*a*np.exp(-a*T)*r0)/(sigma**2*(1-np.exp(-a*T)))
+                scaling = (4*a)/(sigma**2*(1-np.exp(-a*T)))
+                lb, ub = ncx2.ppf(1-size_ci,df,nc)/scaling, np.inf
+        elif type_ci == "upper":
+            if T < 1e-6:
+                lb, ub = r0, r0
+            else:
+                df = (4*a*b)/sigma**2
+                nc = (4*a*np.exp(-a*T)*r0)/(sigma**2*(1-np.exp(-a*T)))
+                scaling = (4*a)/(sigma**2*(1-np.exp(-a*T)))
+                lb, ub = 0, ncx2.ppf(size_ci,df,nc)/scaling
+        elif type_ci == "two_sided":
+            if T < 1e-6:
+                lb, ub = r0, r0
+            else:
+                df = (4*a*b)/sigma**2
+                nc = (4*a*np.exp(-a*T)*r0)/(sigma**2*(1-np.exp(-a*T)))
+                scaling = (4*a)/(sigma**2*(1-np.exp(-a*T)))
+                lb, ub = ncx2.ppf((1-size_ci)/2,df,nc)/scaling, ncx2.ppf(size_ci+(1-size_ci)/2,df,nc)/scaling
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        N = len(T)
+        lb, ub = np.zeros([N]), np.zeros([N])
+        if type_ci == "lower":
+            for i in range(0,N):
+                if T[i] < 1e-6:
+                    lb[i], ub[i] = r0, r0
+                else:
+                    df = (4*a*b)/sigma**2
+                    nc = (4*a*np.exp(-a*T[i])*r0)/(sigma**2*(1-np.exp(-a*T[i])))
+                    scaling = (4*a)/(sigma**2*(1-np.exp(-a*T[i])))
+                    lb[i], ub[i] = ncx2.ppf(1-size_ci,df,nc)/scaling, np.inf
+        elif type_ci == "upper":
+            for i in range(0,N):
+                if T[i] < 1e-6:
+                    lb[i], ub[i] = r0, r0
+                else:
+                    df = (4*a*b)/sigma**2
+                    nc = (4*a*np.exp(-a*T[i])*r0)/(sigma**2*(1-np.exp(-a*T[i])))
+                    scaling = (4*a)/(sigma**2*(1-np.exp(-a*T[i])))
+                    lb[i], ub[i] = 0, ncx2.ppf(size_ci,df,nc)/scaling
+        elif type_ci == "two_sided":
+            for i in range(0,N):
+                if T[i] < 1e-6:
+                    lb[i], ub[i] = r0, r0
+                else:
+                    df = (4*a*b)/sigma**2
+                    nc = (4*a*np.exp(-a*T[i])*r0)/(sigma**2*(1-np.exp(-a*T[i])))
+                    scaling = (4*a)/(sigma**2*(1-np.exp(-a*T[i])))
+                    lb[i], ub[i] = ncx2.ppf((1-size_ci)/2,df,nc)/scaling, ncx2.ppf(size_ci+(1-size_ci)/2,df,nc)/scaling
+                    # (4*b)/(sigma**2*(1-np.exp(-b*tau[i])))*
+    else:
+        print(f"tau not a recognized type")
+        lb,ub = False, False
+    return lb, ub
+
+def simul_cir(r0,a,b,sigma,M,T,method = "exact",seed = None):
+    if seed is not None:
+        np.random.seed(seed)
+    delta = T/M
+    r = np.zeros([M+1])
+    r[0] = r0
+    if method == "exact":
+        delta_sqrt = np.sqrt(delta)
+        df = (4*a*b)/sigma**2
+        factor = (sigma**2*(1-np.exp(-a*delta)))/(4*a)
+        for m in range(1,M+1):
+            nc = (4*a*np.exp(-a*delta)*r[m-1])/(sigma**2*(1-np.exp(-a*delta)))
+            # r_hat = factor*np.random.noncentral_chisquare(df,nc)
+            r_hat = factor*ncx2.rvs(df,nc)
+            if r_hat > 0:
+                r[m] = r_hat
+            else:
+                r[m] = r[m-1]
+    elif method == "euler":
+        delta_sqrt = np.sqrt(delta)
+        Z = np.random.standard_normal(M)
+        for m in range(1,M+1):
+            r_hat = r[m-1] + a*(b-r[m-1])*delta + sigma*np.sqrt(r[m-1])*delta_sqrt*Z[m-1]
+            if r_hat > 0:
+                r[m] = r_hat
+            else:
+                r[m] = r[m-1]
+    elif method == "milstein":
+        delta_sqrt = np.sqrt(delta)
+        Z = np.random.standard_normal(M)
+        for m in range(1,M+1):
+            r_hat = r[m-1] + a*(b-r[m-1])*delta + sigma*np.sqrt(r[m-1])*delta_sqrt*Z[m-1] + 0.25*sigma**2*delta*(Z[m-1]**2-1)
+            if r_hat > 0:
+                r[m] = r_hat
+            else:
+                r[m] = r[m-1]
+    return r
+
+def fit_cir_obj(param,R_star,T,scaling = 1):
+    r0, a, b, sigma = param
+    M = len(T)
+    R_fit = spot_rate_cir(r0,a,b,sigma,T)
+    y = 0
+    for m in range(0,M):
+        y += scaling*(R_fit[m] - R_star[m])**2
+    return y
+
+def fit_cir_no_sigma_obj(param,sigma,R_star,T,scaling = 1):
+    r0, a, b = param
+    M = len(T)
+    R_fit = spot_rate_cir(r0,a,b,sigma,T)
+    y = 0
+    for m in range(0,M):
+        y += scaling*(R_fit[m] - R_star[m])**2
+    return y
+
+# Ho-Lee model
+def theta_ho_lee(t,param,method = "default",f_T = None):
+    if method == "default":
+        sigma = param
+        if type(t) == int or type(t) == float or type(t) == np.int32 or type(t) == np.int64 or type(t) == np.float64:
+            theta = f_T + sigma**2*t
+        elif type(t) == tuple or type(t) == list or type(t) == np.ndarray:
+            N = len(t)
+            theta = np.zeros(N)
+            for n in range(0,N):
+                theta[n] = f_T[n] + sigma**2*t[n]
+    elif method == "nelson_siegel":
+        f_inf, a, b, sigma = param
+        if type(t) == int or type(t) == float or type(t) == np.int32 or type(t) == np.int64 or type(t) == np.float64:
+            K = len(a)
+            theta = -a[0]*b[0]*np.exp(-b[0]*t) + sigma**2*t
+            for k in range(1,K):
+                theta += a[k]*k*t**(k-1)*np.exp(-b[k]*t) - a[k]*b[k]*t**k*np.exp(-b[k]*t)
+        elif type(t) == tuple or type(t) == list or type(t) == np.ndarray:
+            K = len(a)
+            M = len(t)
+            theta = np.zeros([M])
+            for m in range(0,M):
+                theta[m] = -a[0]*b[0]*np.exp(-b[0]*t[m]) + sigma**2*t[m]
+                for k in range(1,K):
+                    theta[m] += a[k]*k*t[m]**(k-1)*np.exp(-b[k]*t[m]) - a[k]*b[k]*t[m]**k*np.exp(-b[k]*t[m])
+
+    return theta
+
+def zcb_price_ho_lee(t,T,r,sigma,T_star,p_star,f_star):
+    if type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        N = len(T)
+        p = N*[None]
+        for i in range(0,N):
+            p_t = for_values_in_list_find_value_return_value(t,T_star,p_star)
+            p_T = for_values_in_list_find_value_return_value(T[i],T_star,p_star)
+            p[i] = (p_T/p_t)*np.exp((T[i]-t)*(f_star-r) - (sigma**2/2)*t*(T[i]-t)**2)
+    elif type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.int64 or type(T) == np.float64:
+        p_t = for_values_in_list_find_value_return_value(t,T_star,p_star)
+        p_T = for_values_in_list_find_value_return_value(T,T_star,p_star)
+        p = (p_T/p_t)*np.exp((T-t)*(f_star-r) - (sigma**2/2)*t*(T-t)**2)
+    return np.array(p)
+
+def mean_var_ho_lee(f,sigma,T):
+    if type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.int64 or type(T) == np.float64:
+        mean, var = f + 0.5*sigma**2*T, sigma**2*T
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        N = len(T)
+        mean, var = np.zeros(N), np.zeros(N)
+        for i in range(0,N):
+            mean[i], var[i] = f[i] + 0.5*sigma**2*T[i], sigma**2*T[i]
+    return mean, var
+
+def ci_ho_lee(f,sigma,T,size_ci,type_ci = "two_sided"):
+    if type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.int64 or type(T) == np.float64:
+        if type_ci == "lower":
+            mean = f + 0.5*sigma**2*T
+            std = sigma*np.sqrt(T)
+            z = norm.ppf(size_ci,0,1)
+            lb, ub = mean - z*std, np.inf
+        elif type_ci == "upper":
+            mean = f + 0.5*sigma**2*T
+            std = sigma*np.sqrt(T)
+            z = norm.ppf(size_ci,0,1)
+            lb, ub = -np.inf, mean + z*std
+        elif type_ci == "two_sided":
+            mean = f + 0.5*sigma**2*T
+            std = sigma*np.sqrt(T)
+            z = norm.ppf(size_ci + 0.5*(1-size_ci),0,1)
+            lb, ub = mean - z*std, mean + z*std
+        print(f"type_ci: {type_ci}, z: {z}")
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        N = len(T)
+        lb, ub = np.zeros([N]), np.zeros([N])
+        if type_ci == "lower":
+            z = norm.ppf(size_ci,0,1)
+            for i in range(0,N):
+                mean = f[i] + 0.5*sigma**2*T[i]
+                std = sigma*np.sqrt(T[i])
+                lb[i], ub[i] = mean - z*std, np.inf
+        elif type_ci == "upper":
+            z = norm.ppf(size_ci,0,1)
+            for i in range(0,N):
+                mean = f[i] + 0.5*sigma**2*T[i]
+                std = sigma*np.sqrt(T[i])
+                lb[i], ub[i] = -np.inf, mean + z*std
+        elif type_ci == "two_sided":
+            z = norm.ppf(size_ci + 0.5*(1-size_ci),0,1)
+            for i in range(0,N):
+                mean = f[i] + 0.5*sigma**2*T[i]
+                std = sigma*np.sqrt(T[i])
+                lb[i], ub[i] = mean - z*std, mean + z*std
+    else:
+        print(f"T is not of recognized type")
+        lb,ub = False, False
+    return lb, ub
+
+def simul_ho_lee(r0,f_T,sigma,T,method = "euler",f = None,seed = None):
+    if seed is not None:
+        np.random.seed(seed)
+    M = len(f_T)
+    delta = T/M
+    delta_sqrt = np.sqrt(delta)
+    Z = np.random.standard_normal(M)
+    if method == "exact":
+        r, W = np.zeros(M), np.zeros(M)
+        r[0] = r0
+        for m in range(1,M):
+            W[m] = W[m-1] + delta_sqrt*Z[m-1]
+            r[m] = f[m] + 0.5*sigma**2*(m*delta)**2 + sigma*W[m]
+    elif method == "euler":
+        r = np.zeros(M)
+        r[0] = r0
+        for m in range(1,M):
+            r[m] = r[m-1] + (f_T[m-1] + sigma**2*(m-1)*delta)*delta + sigma*delta_sqrt*Z[m-1]
+    return r
+
+def euro_option_price_ho_lee(K,T1,T2,p_T1,p_T2,sigma,type = "call"):
+    sigma_p = sigma*(T2-T1)*np.sqrt(T1)
+    d1 = (np.log(p_T2/(p_T1*K)))/sigma_p + 0.5*sigma_p
+    d2 = d1 - sigma_p
+    if type == "call":
+        price = p_T2*ndtr(d1) - p_T1*K*ndtr(d2)
+    elif type == "put":
+        price = p_T1*K*ndtr(-d2) - p_T2*ndtr(-d1)
+    return price
+
+def caplet_prices_ho_lee(sigma,strike,T,p):
+    price_caplet = np.zeros([len(T)])
+    if type(strike) == int or type(strike) == float or type(strike) == np.int32 or type(strike) == np.int64 or type(strike) == np.float64:
+        for i in range(2,len(T)):
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],sigma,type = "put")
+    elif type(strike) == tuple or type(strike) == list or type(strike) == np.ndarray:
+        for i in range(2,len(T)):
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],sigma,type = "put")
+    return price_caplet
+
+# Hull-White Extended Vasicek
+def theta_hwev(t,f,f_T,a,sigma):
+    if type(t) == int or type(t) == float or type(t) == np.int32 or type(t) == np.int64 or type(t) == np.float64:
+        theta = f_T + (sigma**2/a)*(np.exp(-a*t)-np.exp(-2*a*t)) + a*(f + 0.5*(sigma/a)**2*(1-np.exp(-a*t))**2)
+    elif type(t) == tuple or type(t) == list or type(t) == np.ndarray:
+        N = len(t)
+        theta = np.zeros(N)
+        for n in range(0,N):
+            theta[n] = f_T[n] + (sigma**2/a)*(np.exp(-a*t[n])-np.exp(-2*a*t[n])) + a*(f[n] + 0.5*(sigma/a)**2*(1-np.exp(-a*t[n]))**2)
+    return theta
+
+def zcb_price_hwev(t,T,r,a,sigma,T_star,p_star,f_star):
+    if type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        N = len(T)
+        p = N*[None]
+        for i in range(0,N):
+            p_t = for_values_in_list_find_value_return_value(t,T_star,p_star)
+            p_T = for_values_in_list_find_value_return_value(T[i],T_star,p_star)
+            B = (1-np.exp(-a*(T[i]-t)))/a
+            p[i] = (p_T/p_t)*np.exp(B*(f_star-r) - (sigma**2/(4*a))*B**2*(1-np.exp(-2*a*t)))
+    elif type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.int64 or type(T) == np.float64:
+        p_t = for_values_in_list_find_value_return_value(t,T_star,p_star)
+        p_T = for_values_in_list_find_value_return_value(T,T_star,p_star)
+        B = (1-np.exp(-a*(T-t)))/a
+
+        p = (p_T/p_t)*np.exp(B*(f_star-r) - (sigma**2/(4*a))*B**2*(1-np.exp(-2*a*t)))
+    return np.array(p)
+
+def mean_var_hwev(a,sigma,T,f,f_T):
+    N = len(T)
+    mean, var, integral = np.zeros(N), np.zeros(N), np.zeros(N)
+    mean[0] = f[0]
+    for n in range(1,N):
+        var[n] = sigma**2*(1-np.exp(-2*a*(T[n]-T[0])))/(2*a)
+        integral[n] = integral[n-1] + 0.5*np.exp(a*T[n-1])*(f_T[n-1] + (sigma**2/a)*(np.exp(-a*T[n-1])-np.exp(-2*a*T[n-1])) + a*(f[n-1] + 0.5*(sigma/a)**2*(1-np.exp(-a*T[n-1]))**2))*(T[n]-T[n-1]) + 0.5*np.exp(a*T[n])*(f_T[n] + (sigma**2/a)*(np.exp(-a*T[n])+np.exp(-2*a*T[n])) + a*(f[n] + 0.5*(sigma/a)**2*(1-np.exp(-a*T[n]))**2))*(T[n]-T[n-1])
+        # integral[n] = integral[n-1] + 0.5*np.exp(a*T[n-1])*(f_T[n-1] + (sigma**2/a)*(np.exp(-a*T[n-1])+np.exp(-2*a*T[n-1])) + a*(f[n-1] + 0.5*(sigma/a)**2*(1-np.exp(-a*T[n-1]))**2))*(T[n]-T[n-1]) + 0.5*np.exp(a*T[n])*(f_T[n] + (sigma**2/a)*(np.exp(-a*T[n])+np.exp(-2*a*T[n])) + a*(f[n] + 0.5*(sigma/a)**2*(1-np.exp(-a*T[n]))**2))*(T[n]-T[n-1])
+        mean[n] = np.exp(-a*(T[n]-T[0]))*f[0] + np.exp(-a*T[n])*integral[n]
+    return mean, var
+
+def ci_hwev(a,sigma,T,f,f_T,size_ci,type_ci = "two_sided"):
+    mean, var = mean_var_hwev(a,sigma,T,f,f_T)
+    N = len(T)
+    lb, ub = np.zeros([N]), np.zeros([N])
+    if type_ci == "lower":
+        z = norm.ppf(size_ci,0,1)
+        for n in range(0,N):
+            lb[n], ub[n] = mean[n] - z*np.sqrt(var[n]), np.inf
+    elif type_ci == "upper":
+        z = norm.ppf(size_ci,0,1)
+        for n in range(0,N):
+            lb[n], ub[n] = -np.inf, mean[n] + z*np.sqrt(var[n])
+    elif type_ci == "two_sided":
+        z = norm.ppf(size_ci + 0.5*(1-size_ci),0,1)
+        for n in range(0,N):
+            lb[n], ub[n] = mean[n] - z*np.sqrt(var[n]), mean[n] + z*np.sqrt(var[n])
+    return lb, ub
+
+def simul_hwev(r0,t,theta,a,sigma,method = "euler",seed = None):
+    if seed is not None:
+        np.random.seed(seed)
+    M = len(t)
+    delta = t[-1]/M
+    delta_sqrt = np.sqrt(delta)
+    Z = np.random.standard_normal(M)
+    if method == "euler":
+        r = np.zeros(M)
+        r[0] = r0
+        for m in range(1,M):
+            r[m] = r[m-1] + (theta[m-1] - a*r[m-1])*delta + sigma*delta_sqrt*Z[m-1]
+    return r
+
+def euro_option_price_hwev(K,T1,T2,p_T1,p_T2,a,sigma,type = "call"):
+    sigma_p = (sigma/a)*(1-np.exp(-a*(T2-T1)))*np.sqrt((1-np.exp(-2*a*T1))/(2*a))
+    d1 = (np.log(p_T2/(p_T1*K)))/sigma_p + 0.5*sigma_p
+    d2 = d1 - sigma_p
+    if type == "call":
+        price = p_T2*ndtr(d1) - p_T1*K*ndtr(d2)
+    elif type == "put":
+        price = p_T1*K*ndtr(-d2) - p_T2*ndtr(-d1)
+    return price
+
+def caplet_prices_hwev(strike,a,sigma,T,p):
+    price_caplet = np.zeros([len(T)])
+    if type(strike) == int or type(strike) == float or type(strike) == np.int32 or type(strike) == np.int64 or type(strike) == np.float64:
+        for i in range(2,len(T)):
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_hwev(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
+    elif type(strike) == tuple or type(strike) == list or type(strike) == np.ndarray:
+        for i in range(2,len(T)):
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_hwev(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
+    return price_caplet
+
+# Caplets
+def black_caplet_price(sigma,T,strike,alpha,p,L,type = "call"):
+    d1 = (np.log(L/strike) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    d2 = (np.log(L/strike) - 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == 'put':
+        price = alpha*p*(strike*ndtr(-d2) - L*ndtr(-d1))
+    else:
+        price = alpha*p*(L*ndtr(d1) - strike*ndtr(d2))
+    return price
+
+def black_caplet_delta(sigma,T,strike,alpha,p,L,type = "call"):
+    d1 = (np.log(L/strike) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    d2 = (np.log(L/strike) - 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == "call":
+        # p_prev = p*(1+alpha*L)
+        price = alpha*p*(L*ndtr(d1) - strike*ndtr(d2))
+        delta = alpha*p*ndtr(d1) - alpha/(1+alpha*L)*price
+    return delta
+
+def black_caplet_gamma(sigma,T,strike,alpha,p,L,type = "call"):
+    d1 = (np.log(L/strike) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    d2 = (np.log(L/strike) - 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == "call":
+        gamma = alpha*p*(norm.pdf(d1)/(L*sigma*np.sqrt(T))-2*alpha/((1+alpha*L)**2)*(alpha*strike*ndtr(d2) + ndtr(d1)))
+    return gamma
+
+def black_caplet_vega(sigma,T,strike,alpha,p,L,type = "call"):
+    if type == "call":
+        d1 = (np.log(L/strike) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+        vega = alpha*p*L*norm.pdf(d1) * np.sqrt(T)
+    return vega
+
+def black_caplet_theta(sigma,T,r,strike,alpha,p,L,type = "call"):
+    d1 = (np.log(L/strike) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    d2 = (np.log(L/strike) - 0.5*sigma**2*(T-alpha))/(sigma*np.sqrt(T-alpha))
+    price = alpha*p*(L*ndtr(d1) - strike*ndtr(d2))
+    if type == "call":
+        # p_prev = p*(1+alpha*L)
+        price = alpha*p*(L*ndtr(d1) - strike*ndtr(d2))
+        theta = r*price - alpha*p*(sigma*L*norm.pdf(d1))/(2*np.sqrt(T))
+    return theta
+
+def black_caplet_iv(C,T,strike,alpha,p,L,type = "call", iv0 = 0.2, max_iter = 200, prec = 1e-10):
+    if type == "call":
+        iv = iv0
+        for i in range(0,max_iter):
+            price = black_caplet_price(iv,T,strike,alpha,p,L,type = "call")
+            vega = black_caplet_vega(iv,T,strike,alpha,p,L,type = "call")
+            diff = C - price
+            if abs(diff) < prec:
+                return iv
+            iv += diff/vega
+    elif type == "put":
+        pass
+    return iv
+
+# Libor market model
+def drift_lmm(L,alpha,sigma,rho):
+    N = len(L)
+    drift = np.zeros(N)
+    for i in range(0,N-1):
+        for k in range(i+1,N):
+            drift[i] += alpha[k]*L[k]/(1+alpha[k]*L[k])*sigma[i]*sigma[k]*rho[i,k]
+    return drift
+
+def simul_lmm(L0,T,sigma,rho,M):
+    N = len(L0)
+    alpha = np.zeros(N)
+    for n in range(1,N):
+        alpha[n-1] = T[n] - T[n-1]
+    delta = T[1]*N/M
+    delta_sqrt = np.sqrt(delta)
+    log_L_simul = np.nan*np.ones([N,M+1])
+    log_L_simul[:,0] = np.log(L0)
+    stage = 0
+    Mps = int(M/N)
+    while stage < N:
+        Z = np.random.standard_normal([N-stage,Mps])
+        rho_sqrt = np.real(sqrtm(rho[stage:N,stage:N]))
+        for m in range(0,Mps):
+            drift = drift_lmm(log_L_simul[stage:N,stage*Mps+m],alpha[stage:N],sigma[stage:N],rho[stage:N,stage:N])
+            log_L_simul[stage:N,stage*Mps+m+1] = log_L_simul[stage:N,stage*Mps+m] - (0.5*sigma[stage:N]**2 + drift)*delta + delta_sqrt*sigma[stage:N]*np.matmul(rho_sqrt,Z[:,m])
+        stage += 1
+    return np.exp(log_L_simul)
+
+# Swatiopns
+def black_swaption_price(sigma,T,K,S,R,type = "call"):
+    d1 = (np.log(R/K) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    d2 = (np.log(R/K) - 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == 'put':
+        price = S*(K*ndtr(-d2) - R*ndtr(-d1))
+    else:
+        price = S*(R*ndtr(d1) - K*ndtr(d2))
+    return price
+
+def black_swaption_delta(sigma,T,K,S,R,type = "call"):
+    d1 = (np.log(R/K) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    # d2 = (np.log(R/K) - 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == 'call':
+        # price = S*(R*ndtr(d1) - K*ndtr(d2))
+        delta = S*ndtr(d1)  # - price/R + S*(R*norm.pdf(d1) - K*norm.pdf(d2))/(R*sigma*np.sqrt(T))
+    return delta
+
+def black_swaption_gamma(sigma,T,K,S,R,type = "call"):
+    d1 = (np.log(R/K) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    d2 = (np.log(R/K) - 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == 'call':
+        price = S*(R*ndtr(d1) - K*ndtr(d2))
+        gamma = (2/R**2)*price + (S/R)*(norm.pdf(d1)/(sigma*np.sqrt(T)) - 2*ndtr(d1))
+    return gamma
+
+def black_swaption_vega(sigma,T,K,S,R,type = "call"):
+    d1 = (np.log(R/K) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == 'call':
+        vega = S*R*norm.pdf(d1) * np.sqrt(T)
+    return vega
+
+def black_swaption_theta(sigma,T,K,S,r,R,type = "call"):
+    d1 = (np.log(R/K) + 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    d2 = (np.log(R/K) - 0.5*sigma**2*T)/(sigma*np.sqrt(T))
+    if type == 'call':
+        price = S*(R*ndtr(d1) - K*ndtr(d2))
+        theta = r*price - S*R*sigma*norm.pdf(d1)/(2*np.sqrt(T))
+    return theta
+
+def black_swaption_iv(C,T,K,S,R,type = "call", iv0 = 0.2, max_iter = 1000, prec = 1.0e-10):
+    iv = iv0
+    for i in range(0,max_iter):
+        price = black_swaption_price(iv,T,K,S,R,type = "call")
+        vega = black_swaption_vega(iv,T,K,S,R,type = "call")
+        diff = C - price
+        if abs(diff) < prec:
+            return iv
+        iv += diff/vega
+    return iv
+
+# Swap Market Model
+def simul_smm(R0,T,sigma,rho,M,type = "regular"):
+    N = len(R0) - 1
+    delta = T[1]*(N+1)/M
+    delta_sqrt = np.sqrt(delta)
+    alpha = np.zeros(N+1)
+    for n in range(1,N+2):
+        alpha[n-1] = T[n] - T[n-1]
+    rho_sqrt = np.real(sqrtm(rho))
+    sigma = np.matmul(np.diag(sigma),rho_sqrt)
+    R_simul = np.nan*np.ones([N+1,M+1])
+    R_simul[:,0] = R0
+    stage = 0
+    Mps = int(M/(N+1))
+    while stage < N+1:
+        Z = np.random.standard_normal([N+1-stage,Mps])
+        rho_sqrt = np.real(sqrtm(rho[stage:,stage:]))
+        for m in range(1,Mps+1):
+            t = delta*(stage*Mps + m - 1)
+            alpha[stage] = T[stage+1] - t
+            drift = drift_smm(R_simul[stage:,stage*Mps],sigma[stage:,stage:],alpha[stage:])
+            R_simul[stage:,stage*Mps + m] = R_simul[stage:,stage*Mps + m-1] + drift*R_simul[stage:,stage*Mps + m-1]*delta + delta_sqrt*R_simul[stage:,stage*Mps + m-1]*np.matmul(sigma[stage:,stage:],Z[:,m-1])
+        stage += 1
+    return R_simul
+
+def matrix_swap_to_p(alpha,R):
+    N = len(R)
+    M = np.zeros([N,N])
+    for c in range(0,N):
+        M[0,c] = R[0]*alpha[c]
+    M[0,-1] += 1
+    for r in range(1,N):
+        M[r,r-1] = -1
+        for c in range(r,N):
+            M[r,c] = R[r]*alpha[c]
+        M[r,-1] += 1
+    return M
+
+def zcb_prices_from_swap_rates_normal_smm(T,R_swap):
+    N = len(R_swap)
+    alpha = np.zeros(N)
+    p = np.ones(N+1)
+    for n in range(1,N+1):
+        alpha[n-1] = T[n] - T[n-1]
+    X = matrix_swap_to_p(alpha,R_swap)
+    y = np.zeros([N])
+    y[0] = 1
+    p = np.linalg.solve(X,y)
+    return p
+
+def drift_smm(R,sigma,alpha):
+    N = len(R) - 1
+    drift = np.zeros([N+1])
+    X = matrix_swap_to_p(alpha,R)
+    y = np.zeros([N+1])
+    y[0] = 1
+    p = np.linalg.solve(X,y)
+    S = np.zeros(N+1)
+    for n in range(0,N+1):
+        for j in range(0,N+1-n):
+            S[n] += alpha[j]*p[j]
+    phi = np.zeros([N,N+1])
+    for n in range(0,N):
+        for j in range(0,N-1):
+            phi[n,:] += S[j+1]/S[n]*alpha[j+1]*R[j+1]*sigma[j+1,:]
+            for k in range(n+1,j+1):
+                phi[n] *= (1 + alpha[k]*R[k])
+        drift[n] = - np.dot(sigma[n,:],phi[n,:])
+    return drift
+
+# SABR model
+def sigma_sabr(K,T,F_0,sigma_0,beta,upsilon,rho):
+    if abs(F_0-K) < 1e-8:    # SABR ATM formula
+        sigma = sigma_0*F_0**(beta-1)*(1+(((1-beta)**2/24)*(sigma_0**2*(F_0)**(2*beta-2)) + (rho*beta*upsilon*sigma_0/4)*(F_0)**(beta-1) + (2-3*rho**2)/24*upsilon**2)*T)
+    else:
+        z = (upsilon/sigma_0)*(F_0*K)**((1-beta)/2)*np.log(F_0/K)
+        x = np.log((np.sqrt(1-2*rho*z+z**2) + z - rho)/(1-rho))
+        D = (F_0*K)**((1-beta)/(2))*(1 + ((1-beta)**2/24)*np.log2(F_0/K) + ((1-beta)**4/1920)*np.emath.logn(4,F_0/K))
+        A = 1 + (((1-beta)**2/24)*sigma_0**2*(F_0*K)**(beta-1) + (rho*beta*upsilon*sigma_0/4)*(F_0*K)**((beta-1)/2) + ((2-3*rho**2)/24)*upsilon**2)*T
+        sigma = (sigma_0/D)*(z/x)*A
+    return sigma
+
+def sabr_simul(F_0,sigma_0,beta,upsilon,rho,M,T,method = "euler"):
+    sigma, F = np.zeros([M+1]), np.zeros([M+1])
+    sigma[0], F[0] = sigma_0, F_0
+    delta = T/M
+    Z = np.random.standard_normal([2,M])
+    delta_sqrt = np.sqrt(delta)
+    rho_sqrt_help = np.sqrt(1-rho**2)
+    if method == "euler":
+        for m in range(1,M+1):
+            F[m] = F[m-1] + sigma[m-1]*F[m-1]**beta*delta_sqrt*Z[0,m-1]
+            if F[m] <= 0:
+                F[m] = F[m-1]
+            sigma[m] = sigma[m-1] + upsilon*sigma[m-1]*delta_sqrt*(rho*Z[0,m-1] + rho_sqrt_help*Z[1,m-1])
+    elif method == "milstein":
+        for m in range(1,M+1):
+            F[m] = F[m-1] + sigma[m-1]*F[m-1]**beta*delta_sqrt*Z[0,m-1] + 0.5*beta*sigma[m-1]**2*F[m-1]**(2*beta-1)*delta*(Z[0,m-1]**2-1)
+            if F[m] <= 0:
+                F[m] = F[m-1]
+            Z3 = rho*Z[0,m-1] + rho_sqrt_help*Z[1,m-1]
+            sigma[m] = sigma[m-1] + upsilon*sigma[m-1]*delta_sqrt*Z3 + 0.5*upsilon**2*sigma[m-1]*delta*(Z3**2-1)
+    return F, sigma
+
+def fit_sabr_obj(param,sigma_market,K,T,R):
+    sigma_0, beta, upsilon, rho = param
+    N = len(sigma_market)
+    sse = 0
+    for n in range(0,N):
+        sigma_model = sigma_sabr(K[n],T,R,sigma_0,beta,upsilon,rho)
+        sse += (sigma_market[n]-sigma_model)**2
+    return sse
+
+def fit_sabr_no_beta_obj(param,beta,sigma_market,K,T,R):
+    sigma_0, upsilon, rho = param
+    N = len(sigma_market)
+    sse = 0
+    for n in range(0,N):
+        sigma_model = sigma_sabr(K[n],T,R,sigma_0,beta,upsilon,rho)
+        sse += (sigma_market[n]-sigma_model)**2
+    return sse
+
+# Statistics
+def data_into_bins(data,N_bins,bin_min = "default",bin_max = "default"):
+    # Divide the data in a one-simensional np.array into N_bins bins of equal size.
+    N = len(data)
+    data = np.sort(data,kind = "stable")
+    if bin_min == "default":
+        bin_min = data[0]
+    if bin_max == "default":
+        bin_max = data[-1]
+    limits_bins = np.array([bin_min + i*(bin_max-bin_min)/N_bins for i in range(0,N_bins+1)])
+    freq = np.zeros([N_bins])
+    data_bins = []
+    i, j = 0, 0
+    while i < N_bins:
+        freq_temp = 0
+        data_temp = []
+        while data[j] <= limits_bins[i+1]:
+            data_temp.append(data[j])
+            freq_temp += 1
+            if j < N - 1:
+                j += 1
+            elif j == N - 1:
+                break
+        data_bins.append(np.array(data_temp))
+        freq[i] = freq_temp
+        i += 1
+    return np.array(data_bins), limits_bins, freq
+
+# Nelson-Siegel function
+def F_ns(param,T):
+    if type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.int64 or type(T) == np.float64:
+        f_inf, a, b = param
+        K = len(a)
+        F = f_inf*T
+        for k in range(0,K):
+            F += a[k]*b[k]**(-k-1)*gammainc(k+1,b[k]*T)
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        f_inf, a, b = param
+        K = len(a)
+        M = len(T)
+        F = np.zeros([M])
+        for m in range(0,M):
+            F[m] = f_inf*T[m]
+            for k in range(0,K):
+                F[m] += a[k]*b[k]**(-k-1)*gammainc(k+1,b[k]*T[m])
+    return F
+
+def f_ns(param,T):
+    if type(T) == int or type(T) == float or type(T) == np.int32 or type(T) == np.int64 or type(T) == np.float64:
+        f_inf, a, b = param
+        K = len(a)
+        f = f_inf
+        for k in range(0,K):
+            f += a[k]*T**k*np.exp(-b[k]*T)
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        f_inf, a, b = param
+        K = len(a)
+        M = len(T)
+        f = np.zeros([M])
+        for m in range(0,M):
+            f[m] = f_inf
+            for k in range(0,K):
+                f[m] += a[k]*T[m]**k*np.exp(-b[k]*T[m])
+    return f
+
+def f_ns_jac(param,T):
+    f_inf, a, b = param
+    N = len(a) - 1
+    jac = np.zeros([2*(N+1)+1])
+    jac[0] = 1
+    for n in range(0,N+1):
+        jac[1+n] = T**n*np.exp(-b[n]*T)
+        jac[1+N+1+n] = -a[n]*T**(n+1)*np.exp(-b[n]*T)
+    return jac
+
+def f_ns_hess(param,T):
+    f_inf, a, b = param
+    N = len(a) - 1
+    hess = np.zeros([2*(N+1)+1,2*(N+1)+1])
+    for n in range(0,N+1):
+        hess[1+n,1+N+1+n] = - T**(n+1)*np.exp(-b[n]*T)
+        hess[1+N+1+n,1+n] = - T**(n+1)*np.exp(-b[n]*T)
+        hess[1+N+1+n,1+N+1+n] = a[n]*T**(n+2)*np.exp(-b[n]*T)
+    return hess
+
+def f_ns_T(param,T):
+    if type(T) == int or type(T) == float or type(T) == np.float32 or type(T) == np.float64:
+        a, b = param
+        N = len(a)
+        f_T = -a[0]*b[0]*np.exp(-b[0]*T)
+        for n in range(1,N):
+            f_T += a[n]*n*T**(n-1)*np.exp(-b[n]*T) - a[n]*b[n]*T**n*np.exp(-b[n]*T)
+    elif type(T) == tuple or type(T) == list or type(T) == np.ndarray:
+        a, b = param
+        N = len(a)
+        M = len(T)
+        f_T = np.zeros([M])
+        for m in range(0,M):
+            f_T[m] = -a[0]*b[0]*np.exp(-b[0]*T[m])
+            for n in range(1,N):
+                f_T[m] += a[n]*n*T[m]**(n-1)*np.exp(-b[n]*T[m]) - a[n]*b[n]*T[m]**n*np.exp(-b[n]*T[m])
+    return f_T
+
+def theta_ns(param,t):
+    if type(t) == int or type(t) == float or type(t) == np.float32 or type(t) == np.float64:
+        f_inf, a, b, sigma = param
+        print(f_inf, a, b, sigma)
+        K = len(a)
+        theta = -a[0]*b[0]*np.exp(-b[0]*t) + sigma**2*t
+        for k in range(1,K):
+            theta += a[k]*k*t**(k-1)*np.exp(-b[k]*t) - a[k]*b[k]*t**k*np.exp(-b[k]*t)
+    elif type(t) == tuple or type(t) == list or type(t) == np.ndarray:
+        f_inf, a, b, sigma = param
+        K = len(a)
+        M = len(t)
+        theta = np.zeros([M])
+        for m in range(0,M):
+            theta[m] = -a[0]*b[0]*np.exp(-b[0]*t[m]) + sigma**2*t[m]
+            for k in range(1,K):
+                theta[m] += a[k]*k*t[m]**(k-1)*np.exp(-b[k]*t[m]) - a[k]*b[k]*t[m]**k*np.exp(-b[k]*t[m])
+    return theta
 
 # List operations
 def find_value_return_value(val,L1,L2,precision = 10e-8):
