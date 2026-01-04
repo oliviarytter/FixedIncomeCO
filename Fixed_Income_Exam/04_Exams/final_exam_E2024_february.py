@@ -1,16 +1,5 @@
 import numpy as np
 from scipy.optimize import minimize
-import sys
-import os
-# Denne linje finder stien til mappen "over" den du er i, og går ind i /05_Lib/
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', '05_Library')))
-
-# Nu kan du importere værktøjskassen
-try:
-    import fixed_income_derivatives_E2025 as fid
-    print("Succes: Værktøjskassen er indlæst!")
-except ImportError:
-    print("Fejl: Kunne ikke finde fixed_income_derivatives_E2025.py i mappen /05_Lib/")
 import fixed_income_derivatives_E2025 as fid
 import matplotlib.pyplot as plt
 
