@@ -1,7 +1,7 @@
 import numpy as np
 import fixed_income_derivatives_E2025 as fid
 from scipy.linalg import sqrtm
-#import finance_jls as fin
+import finance_jls as fin
 import matplotlib.pyplot as plt
 
 # # Data construction
