@@ -1,8 +1,9 @@
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import gamma
-import fixed_income_derivatives as fid
+import fixed_income_derivatives_E2025 as fid
 import matplotlib.pyplot as plt
+
 
 # Problem 1
 def fit_cir_obj(param,sigma,R_star,T,scaling = 1):
