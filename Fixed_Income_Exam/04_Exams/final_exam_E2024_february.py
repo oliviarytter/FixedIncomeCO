@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
-import fixed_income_derivatives_E2025 as fid
+from Library import fixed_income_derivatives_E2025 as fid
 import matplotlib.pyplot as plt
 
 iv_swaption_market = np.array([0.275616, 0.237815, 0.209661, 0.183214, 0.163977, 0.140387, 0.132907, 0.124768, 0.12871, 0.134726, 0.145571, 0.149179, 0.160561])
