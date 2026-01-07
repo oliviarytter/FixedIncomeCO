@@ -51,9 +51,42 @@ print(f"Problem 1a - 6M,1Y,2Y,5Y,10Y,15Y,20Y,30Y spot rates from the fit: {np.ro
 alpha_floating_leg = 0.5
 T_10Y_swap = np.array([i*alpha_floating_leg for i in range(0,21)])
 p_10Y_swap = fid.for_values_in_list_find_value_return_value(T_10Y_swap,T_inter,p_inter)
-L_6M = fid.forward_libor_rates_from_zcb_prices(T_10Y_swap,p_10Y_swap,horizon = 1)
+L_6M = fid.forward_rates_from_zcb_prices(T_10Y_swap,p_10Y_swap,horizon = 1)
 R_10Y_swap, S_10Y_swap = fid.swap_rate_from_zcb_prices(0,0,10,"annual",T_10Y_swap,p_10Y_swap)
 print(f"Problem 1c - 10Y par swap rate: {R_10Y_swap}")
+
+#PLOTS FOR PROBLEM 1
+fig, ax = plt.subplots(1, 2, figsize=(12,4))
+
+# --- Left: spot & forward rates ---
+ax[0].plot(T_inter, R_inter, 'k.', ms=3, label="Spot rates")
+ax[0].plot(T_inter, f_inter, 'r.', ms=3, label="Forward rates")
+ax[0].set(title="Spot & Forward Rates", xlabel="Maturity", ylabel="Rate")
+ax[0].set_ylim(0, 0.08)
+ax[0].grid(True, ls='--', alpha=0.5)
+ax[0].legend()
+
+# Text box (fit info)
+ax[0].text(
+    0.01, 0.15,
+    "method: hermite\ndegree: 3\ntransition: smooth",
+    transform=ax[0].transAxes,
+    fontsize=9,
+    verticalalignment='top',
+    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8)
+)
+
+# --- Right: forwards & swap ---
+ax[1].plot(T_10Y_swap[1:], L_6M[1:], 'k.', ms=5, label="6M Forward Euribor")
+ax[1].axhline(R_10Y_swap, color='red', lw=2, label="10Y Par Swap")
+ax[1].set(title="6M Forwards & 10Y Swap", xlabel="Maturity", ylabel="Rate")
+ax[1].set_ylim(0, 0.08)
+ax[1].grid(True, ls='--', alpha=0.5)
+ax[1].legend()
+
+plt.tight_layout()
+plt.show()
+
 
 # Problem 2 - Pricing the interest rate cap
 def fit_hwev_caplet_prices(param,price,strike_observed,T,p,scaling = 1):

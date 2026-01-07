@@ -1021,14 +1021,31 @@ def euro_option_price_hwev(K,T1,T2,p_T1,p_T2,a,sigma,type_option = "call"):
         price = p_T1*K*ndtr(-d2) - p_T2*ndtr(-d1)
     return price
 
-def caplet_prices_hwev(strike,a,sigma,T,p):
-    price_caplet = np.zeros([len(T)])
-    if type(strike) == int or type(strike) == float or type(strike) == np.int32 or type(strike) == np.int64 or type(strike) == np.float64:
-        for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_hwev(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
-    elif type(strike) == tuple or type(strike) == list or type(strike) == np.ndarray:
-        for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_hwev(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
+def caplet_prices_hwev(strike, a, sigma, T, p):
+    price_caplet = np.zeros(len(T))
+
+    if isinstance(strike, (int, float, np.int32, np.int64, np.float64)):
+        for i in range(2, len(T)):
+            alpha = T[i] - T[i-1]
+            price_caplet[i] = (1 + alpha*strike) * euro_option_price_hwev(
+                1/(1 + alpha*strike),
+                T[i-1], T[i],
+                p[i-1], p[i],
+                a, sigma,
+                type_option="put"
+            )
+
+    elif isinstance(strike, (tuple, list, np.ndarray)):
+        for i in range(2, len(T)):
+            alpha = T[i] - T[i-1]
+            price_caplet[i] = (1 + alpha*strike[i]) * euro_option_price_hwev(
+                1/(1 + alpha*strike[i]),
+                T[i-1], T[i],
+                p[i-1], p[i],
+                a, sigma,
+                type_option="put"
+            )
+
     return price_caplet
 
 def swaption_price_hwev(T_n,T_N,strike,fixed_freq,r0,a,sigma,T_star,p_star,f_star,type_swap = None):
