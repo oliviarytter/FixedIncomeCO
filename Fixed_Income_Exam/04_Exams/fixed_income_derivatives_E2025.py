@@ -471,7 +471,7 @@ def euro_option_price_vasicek(K,T1,T2,p_T1,p_T2,a,sigma,type_option = "call"):
     if type_option == "call":
         # print(f"        Vasicek Q1: {ndtr(d2)}, Q2: {ndtr(d1)}, K: {K}")
         price = p_T2*ndtr(d1) - p_T1*K*ndtr(d2)
-    elif type_option == "put":
+    elif type_option  == "put":
         # print(f"        Vasicek Q1: {ndtr(-d2)}, Q2: {ndtr(-d1)}, K: {K}")
         price = p_T1*K*ndtr(-d2) - p_T2*ndtr(-d1)
     return price
@@ -480,10 +480,10 @@ def caplet_prices_vasicek(sigma,strike,a,T,p):
     price_caplet = np.zeros([len(T)])
     if type(strike) == int or type(strike) == float or type(strike) == np.int32 or type(strike) == np.int64 or type(strike) == np.float64:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],a,sigma,type_option = "put")
     elif type(strike) == tuple or type(strike) == list or type(strike) == np.ndarray:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],a,sigma,type_option = "put")
     return price_caplet
 
 def fit_vasicek_obj(param,R_star,T,scaling = 1):
@@ -534,17 +534,17 @@ def swaption_price_vasicek(T_n,T_N,strike,fixed_freq,r0,a,b,sigma,type_swap = No
         p = zcb_price_vasicek(r0,a,b,sigma,T_fix)
         for i in range(1,N-1):
             p_strike = zcb_price_vasicek(r_star,a,b,sigma,T_fix[i]-T_fix[0])
-            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type = "put")
+            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type_option = "put")
         p_strike = zcb_price_vasicek(r_star,a,b,sigma,T_fix[N-1]-T_fix[0])
-        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type = "put")
+        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type_option = "put")
     elif type_swap == "receiver":
         N = len(T_fix)
         p = zcb_price_vasicek(r0,a,b,sigma,T_fix)
         for i in range(1,N-1):
             p_strike = zcb_price_vasicek(r_star,a,b,sigma,T_fix[i]-T_fix[0])
-            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type = "call")
+            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type_option = "call")
         p_strike = zcb_price_vasicek(r_star,a,b,sigma,T_fix[N-1]-T_fix[0])
-        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type = "call")
+        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_vasicek(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type_option = "call")
     return swaption_price
 
 def swaption_payoff_vasicek(r,K,a,b,sigma,T_swap):
@@ -935,10 +935,10 @@ def caplet_prices_ho_lee(sigma,strike,T,p):
     price_caplet = np.zeros([len(T)])
     if type(strike) == int or type(strike) == float or type(strike) == np.int32 or type(strike) == np.int64 or type(strike) == np.float64:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],sigma,type_option = "put")
     elif type(strike) == tuple or type(strike) == list or type(strike) == np.ndarray:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],sigma,type_option = "put")
     return price_caplet
 
 # Hull-White Extended Vasicek
@@ -1073,17 +1073,17 @@ def swaption_price_hwev(T_n,T_N,strike,fixed_freq,r0,a,sigma,T_star,p_star,f_sta
         p = for_values_in_list_find_value_return_value(T_fix,T_star,p_star)
         for i in range(1,N-1):
             p_strike = zcb_price_hwev(T_fix[0],T_fix[i],r_star,a,sigma,T_star,p_star,f_star_swaption)
-            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_hwev(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type = "put")
+            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_hwev(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type_option = "put")
         p_strike = zcb_price_hwev(T_fix[0],T_fix[N-1],r_star,a,sigma,T_star,p_star,f_star_swaption)
-        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_hwev(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type = "put")
+        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_hwev(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type_option = "put")
     elif type_swap == "receiver":
         N = len(T_fix)
         p = zcb_price_hwev(0,T_fix,r0,a,sigma,T_star,p_star,f_star_swaption)
         for i in range(1,N-1):
             p_strike = zcb_price_hwev(T_fix[0],T_fix[i],r_star,a,sigma,T_star,p_star,f_star_swaption)
-            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_hwev(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type = "call")
+            swaption_price += (T_fix[i]-T_fix[i-1])*strike*euro_option_price_hwev(p_strike,T_fix[0],T_fix[i],p[0],p[i],a,sigma,type_option = "call")
         p_strike = zcb_price_hwev(T_fix[0],T_fix[N-1],r_star,a,sigma,T_star,p_star,f_star_swaption)
-        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_hwev(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type = "call")
+        swaption_price += (1+(T_fix[N-1]-T_fix[N-2])*strike)*euro_option_price_hwev(p_strike,T_fix[0],T_fix[N-1],p[0],p[N-1],a,sigma,type_option = "call")
     return swaption_price
 
 def swaption_payoff_hwev(r,K,a,sigma,T_star,p_star,f_star,T_fix):

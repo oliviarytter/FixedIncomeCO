@@ -464,14 +464,14 @@ def simul_vasicek(r0,a,b,sigma,M,T,method = "exact",seed = None):
             r[m] = r[m-1] + (b-a*r[m-1])*delta + sigma*delta_sqrt*Z[m-1]
     return r
 
-def euro_option_price_vasicek(K,T1,T2,p_T1,p_T2,a,sigma,type_option = "call"):
+def euro_option_price_vasicek(K,T1,T2,p_T1,p_T2,a,sigma,type = "call"):
     sigma_p = (sigma/a)*(1-np.exp(-a*(T2-T1)))*np.sqrt((1-np.exp(-2*a*T1))/(2*a))
     d1 = (np.log(p_T2/(p_T1*K)))/sigma_p + 0.5*sigma_p
     d2 = d1 - sigma_p
-    if type_option == "call":
+    if type == "call":
         # print(f"        Vasicek Q1: {ndtr(d2)}, Q2: {ndtr(d1)}, K: {K}")
         price = p_T2*ndtr(d1) - p_T1*K*ndtr(d2)
-    elif type_option == "put":
+    elif type == "put":
         # print(f"        Vasicek Q1: {ndtr(-d2)}, Q2: {ndtr(-d1)}, K: {K}")
         price = p_T1*K*ndtr(-d2) - p_T2*ndtr(-d1)
     return price
