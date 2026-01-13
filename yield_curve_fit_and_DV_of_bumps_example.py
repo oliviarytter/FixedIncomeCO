@@ -1,6 +1,8 @@
 import numpy as np
 import fixed_income_derivatives_E2025 as fid
 import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from scipy.stats import norm
 
 EURIBOR_fixing = [{"id": 0,"instrument": "libor","maturity": 1/2, "rate":0.00967}]
 fra_market = [{"id": 1,"instrument": "fra","exercise": 1/12,"maturity": 7/12, "rate": 0.00980},
@@ -117,6 +119,7 @@ p2 = ax.scatter(T_inter[1:], f_inter[1:], s = 1, color = 'red', marker = ".",lab
 plots = [p1,p2]
 labels = [item.get_label() for item in plots]
 ax.legend(plots,labels,loc="lower right",fontsize = 6)
+fig.savefig("C:/Jacob/Uni_of_CPH/FID/FID_E2024/Lecture Notes/Lecture_slides_II_static_term_structure_models/yield_curve_fit.pdf")
 bbox = {"facecolor": (1,1,1,0.8),"edgecolor": (0.7,0.7,0.7,0.5),"boxstyle": "Round"}
 if interpolation_options["method"] == "hermite":
     ax.text(0.32,0.0024,f" method: {interpolation_options['method']} \n degree: {interpolation_options['degree']} \n transition: {interpolation_options['transition']}", fontsize = 6,linespacing = 1.7, bbox = bbox)
@@ -124,3 +127,4 @@ else:
     ax.text(0.32,0.0024,f" method: {interpolation_options['method']} \n transition: {interpolation_options['transition']}", fontsize = 6,linespacing = 1.7, bbox = bbox)
 # fig.savefig("C:/Jacob/Uni_of_CPH/FID/FID_E2024/Assignments/week_2/plot_2a.pdf")
 plt.show()
+
