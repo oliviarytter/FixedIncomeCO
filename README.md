@@ -1,2 +1,0 @@
-# FixedIncomeCO
-Fixed income derivatives 
