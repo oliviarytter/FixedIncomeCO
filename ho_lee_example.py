@@ -59,7 +59,7 @@ T_caplet = np.array([i*alpha for i in range(0,M_caplet+1)])
 p_caplet = fid.for_values_in_list_find_value_return_value(T_caplet,T_inter,p_inter)
 price_caplet = np.zeros([M_caplet+1])
 for i in range(2,M_caplet+1):
-    price_caplet[i] = (1 + (T_caplet[i]-T_caplet[i-1])*strike)*fid.euro_option_price_ho_lee(1/(1 + (T_caplet[i]-T_caplet[i-1])*strike),T_caplet[i-1],T_caplet[i],p_caplet[i-1],p_caplet[i],sigma,type = "put")
+    price_caplet[i] = (1 + (T_caplet[i]-T_caplet[i-1])*strike)*fid.euro_option_price_ho_lee(1/(1 + (T_caplet[i]-T_caplet[i-1])*strike),T_caplet[i-1],T_caplet[i],p_caplet[i-1],p_caplet[i],sigma,type_option= "put")
 price_cap = sum(price_caplet[2:])
 S_swap = fid.accrual_factor_from_zcb_prices(0,0,T_caplet[-1],"semiannual",T_caplet,p_caplet)
 premium_cap = alpha*(price_cap/S_swap)
@@ -226,9 +226,4 @@ p1 = ax.scatter([i for i in range(1,N_simul+1)], price_swaption_plot, s = 1, col
 plots = [p1]
 labels = [item.get_label() for item in plots]
 ax.legend(plots,labels,loc="upper right",fontsize = 5)
-
-
-
-
-
 plt.show()
