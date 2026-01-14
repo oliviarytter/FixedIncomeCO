@@ -20,7 +20,7 @@ for i in range(1,M):
     p[i] = np.exp(-R[i]*T[i])
     L[i] = (1/alpha)*(p[i-1] - p[i])/p[i]
     if i > 1:
-        price_caplet_1b[i] = fid.black_caplet_price(sigma_market_1b[i],T[i],strike,alpha,p[i],L[i],type = 'call')
+        price_caplet_1b[i] = fid.black_caplet_price(sigma_market_1b[i],T[i],strike,alpha,p[i],L[i],type_option = 'call')
 print(f"1Y forward LIBOR rates: {L}")
 print(f"ZCB prices: {p}")
 print(f"caplet prices: {price_caplet_1b}")
@@ -40,7 +40,7 @@ print(f"cap annual premium: {premium_1c*10000}")
 strike = 0.05
 prics_caplet_1d = np.zeros(M)
 for i in range(2,M):
-    prics_caplet_1d[i] = fid.black_caplet_price(sigma_market_1d[i],T[i],strike,alpha,p[i],L[i],type = 'call')
+    prics_caplet_1d[i] = fid.black_caplet_price(sigma_market_1d[i],T[i],strike,alpha,p[i],L[i],type_option = 'call')
 print(f"caplet prices: {prics_caplet_1d}")
 price_cap_1d = sum(prics_caplet_1d)
 print(f"cap price: {price_cap_1d*10000}.")
@@ -61,11 +61,19 @@ for i in range(0,M-1):
 sigma_market_3 = np.nan*np.ones([3,M-1])
 for i in range(0,3):
     for j in range(2,M):
-        sigma_market_3[i,j-1] = fid.black_caplet_iv(p_spot[j]*alpha*caplet_spread[i,j-1]/10000,T[j],L_3[j]+offset[i]/10000,alpha,p_spot[j],L_3[j],type = "call")
+        sigma_market_3[i,j-1] = fid.black_caplet_iv(p_spot[j]*alpha*caplet_spread[i,j-1]/10000,T[j],L_3[j]+offset[i]/10000,alpha,p_spot[j],L_3[j],type_option = "call")
 print(f"Problem 3b - Black implied volatilities")
 print(sigma_market_3)
 
-Mps, N_simul = 500, 4000
+print(f"Problem 3c - Diffusion coefficients in the 'constant' LIBOR market model")
+N = M - 2
+y = sigma_market_3[1,1:]**2*T[2:]
+A = alpha*np.eye(N)*T[1:1+N]
+beta_sq = (np.linalg.solve(A,y))
+beta = np.sqrt(beta_sq)
+print(f"beta vector: {beta}")
+
+Mps, N_simul = 500, 1
 strike_lmm = 0.0475
 rho = np.array([[1,0.95,0.9,0.85],[0.95,1,0.95,0.9],[0.9,0.95,1,0.95],[0.85,0.9,0.95,1]])
 delta = alpha/Mps
@@ -73,14 +81,13 @@ t_simul = np.array([i*delta for i in range(0,(M-2)*Mps+1)])
 caplet_price_3 = np.zeros(M-2)
 chi_disc = np.zeros([M-2,N_simul])
 for n in range(0,N_simul):
-    L_simul = fid.simul_lmm(L[2:M],T[1:M],sigma_market_1b[2:],rho,Mps)
+    L_simul = fid.simul_lmm(L[2:M],T[1:M],sigma_market_3[1,1:],rho,Mps)
     for j in range(0,M-2):
         chi_disc[j,n] = p[-1]*alpha*max(L_simul[j,int((j+1)*Mps)] - strike_lmm,0)
         for k in range(j,M-2):
             chi_disc[j,n] *= (1+alpha*L_simul[k,int((k+1)*Mps)])
 for i in range(0,M-2):
     caplet_price_3[i] = sum(chi_disc[i,:])/N_simul*10000
-
 print(f"caplet_price for a strike of {strike_lmm} is {caplet_price_3}, cap price: {sum(caplet_price_3)}")
 
 fig = plt.figure(constrained_layout=False, dpi = 300, figsize = (5,3))
@@ -123,7 +130,7 @@ p4 = ax.scatter(t_simul, L_simul[3,:], s = 1, color = 'green', marker = ".",labe
 plots = [p1,p2,p3,p4]
 labels = [item.get_label() for item in plots]
 ax.legend(plots,labels,loc="lower right",fontsize = 6)
-plt.show()
+# plt.show()
 
 # Problem 4
 EURIBOR_fixing = [{"id": 0,"instrument": "libor","maturity": 1/2, "rate": 0.04777}]
@@ -158,17 +165,17 @@ interpolation_options = {"method":"hermite","degree":3,"transition": "smooth"}
 # interpolation_options = {"method":"nelson_siegel","transition": "smooth"}
 
 T_fit, R_fit = fid.zcb_curve_fit(data,interpolation_options = interpolation_options)
-
 T_inter = np.array([i*mesh for i in range(0,int(30/mesh)+1)])
 p_inter, R_inter, f_inter, T_inter = fid.zcb_curve_interpolate(T_inter,T_fit,R_fit,interpolation_options = interpolation_options)
 T_1Y_libor, L_1Y_libor = np.array([i for i in range(0,N+1)]), np.nan*np.ones([N+1])
 p_1Y_libor = fid.for_values_in_list_find_value_return_value(T_1Y_libor,T_inter,p_inter)
-L_1Y_libor = fid.forward_rates_from_zcb_prices(T_1Y_libor,p_1Y_libor,horizon = 1,type = "simple")
-print(f"1Y forward LIBOR rates: {L_1Y_libor}")
+L_1Y_libor = fid.forward_rates_from_zcb_prices(T_1Y_libor,p_1Y_libor,horizon = 1,method = "simple")
+print(f"Forward 1Y LIBOR rates: {L_1Y_libor}")
+print(f"Forward 1Y ZCB prices: {p_1Y_libor}")
 
 iv = np.nan*np.ones([N+1])
 for i in range(2,N+1):
-    iv[i] = fid.black_caplet_iv(p_1Y_libor[i]*caplet_spread[i]/10000,T_1Y_libor[i],L_1Y_libor[i],alpha,p_1Y_libor[i],L_1Y_libor[i],type = "call")
+    iv[i] = fid.black_caplet_iv(p_1Y_libor[i]*caplet_spread[i]/10000,T_1Y_libor[i],L_1Y_libor[i],alpha,p_1Y_libor[i],L_1Y_libor[i],type_option = "call")
 print(f"iv: {iv}")
 
 # Simulating the Libor rates in the regular and reverse LIBOR market model
@@ -180,40 +187,44 @@ for i in range(0,N-1):
         rho[i,j] = rho[i,j-1]*rho_param
     for j in range(i-1,-1,-1):
         rho[i,j] = rho[i,j+1]*rho_param
+eigen_values = np.linalg.eigvals(rho)
+print(f"eigenvalues of rho: {eigen_values}")
+
 delta = alpha/Mps
 t_simul = np.array([i*delta for i in range(0,(N-1)*Mps+1)])
 L_simul_regular = fid.simul_lmm(L_1Y_libor[2:N+1],T_1Y_libor[1:N+1],iv[2:],rho,Mps,method_sigma = "step_wise_constant_regular",seed = 12)
 L_simul_reverse = fid.simul_lmm(L_1Y_libor[2:N+1],T_1Y_libor[1:N+1],iv[2:],rho,Mps,method_sigma = "step_wise_constant_reverse",seed = 12)
 
-# Problem 4 - Computing the price of a 5Y5Y payer swap
-T_n, T_N = 5,10
-Mps, N_simul = 250, 2000
-rho_param = 0.95
+# Computing the price of a 5Y5Y payer swap
+T_n, T_N = 5, 10
+alpha = 1
+Mps, N_simul = 250, 1000
 F_swap, S_swap = fid.swap_rate_from_zcb_prices(0,T_n,T_N,"annual",T_1Y_libor,p_1Y_libor)
 print(f"F_swap: {F_swap}, S_swap: {S_swap}")
-T_swap = np.array([i*alpha for i in range(0,int(T_N-T_n)+1)])
-p_swap_regular, p_swap_reverse = np.ones([int(T_N-T_n)+1]), np.ones([int(T_N-T_n)+1])
+T_swap = np.array([i*alpha for i in range(0,int((T_N-T_n)/alpha)+1)])
+p_swap_regular, p_swap_reverse = np.ones([int((T_N-T_n)/alpha)+1]), np.ones([int((T_N-T_n)/alpha)+1])
 rho = np.identity(N-1)
-for i in range(0,N-1):
-    for j in range(i+1,N-1):
+for i in range(0,int(T_N/alpha)-1):
+    for j in range(i+1,int(T_N/alpha)-1):
         rho[i,j] = rho[i,j-1]*rho_param
     for j in range(i-1,-1,-1):
         rho[i,j] = rho[i,j+1]*rho_param
+
 delta = alpha/Mps
-t_simul_swap = np.array([i*delta for i in range(0,(N-1)*Mps+1)])
+t_simul_swap = np.array([i*delta for i in range(0,int(T_n/alpha)*Mps+1)])
 chi_disc, chi_disc_plot = np.zeros([N_simul,2]), np.zeros([N_simul,2])
 for n in range(0,N_simul):
-    L_simul_regular_swap = fid.simul_lmm(L_1Y_libor[2:N+1],T_1Y_libor[1:N+1],iv[2:],rho,Mps,method_sigma = "step_wise_constant_regular",seed = n)
-    for j in range(0,T_n):
-        p_swap_regular[j+1] = p_swap_regular[j]/(1+alpha*L_simul_regular_swap[T_n-1+j,(j+1)*Mps])
-    R_swap_regular, S_swap_regular = fid.swap_rate_from_zcb_prices(0,0,T_n,"annual",T_swap,p_swap_regular)
-    chi_disc[n,0] += S_swap*max(F_swap-R_swap_regular,0)*(p_1Y_libor[int(T_n*alpha)]/p_swap_regular[-1])
+    L_simul_regular_swap = fid.simul_lmm(L_1Y_libor[2:N+1],T_1Y_libor[1:N+1],iv[2:],rho,Mps,method_sigma = "step_wise_constant_regular",T_simul = T_n,seed = n)
+    for j in range(0,int((T_N-T_n)/alpha)):
+        p_swap_regular[j+1] = p_swap_regular[j]/(1+alpha*L_simul_regular_swap[int(T_n/alpha)-1+j,-1])
+    R_swap_regular, S_swap_regular = fid.swap_rate_from_zcb_prices(0,0,T_N-T_n,"annual",T_swap,p_swap_regular)
+    chi_disc[n,0] += S_swap_regular*max(F_swap-R_swap_regular,0)*(p_1Y_libor[T_N]/p_swap_regular[-1])
     chi_disc_plot[n,0] = sum(chi_disc[0:n+1,0])/(n+1)
-    L_simul_reverse_swap = fid.simul_lmm(L_1Y_libor[2:N+1],T_1Y_libor[1:N+1],iv[2:],rho,Mps,method_sigma = "step_wise_constant_reverse",seed = n)
-    for j in range(0,T_n):
-        p_swap_reverse[j+1] = p_swap_reverse[j]/(1+alpha*L_simul_reverse_swap[T_n-1+j,(j+1)*Mps])
-    R_swap_reverse, S_swap_reverse = fid.swap_rate_from_zcb_prices(0,0,T_n,"annual",T_swap,p_swap_reverse)
-    chi_disc[n,1] += S_swap*max(F_swap-R_swap_reverse,0)*(p_1Y_libor[int(T_n*alpha)]/p_swap_reverse[-1])
+    L_simul_reverse_swap = fid.simul_lmm(L_1Y_libor[2:N+1],T_1Y_libor[1:N+1],iv[2:],rho,Mps,method_sigma = "step_wise_constant_reverse",T_simul = T_n,seed = n)
+    for j in range(0,int((T_N-T_n)/alpha)):
+        p_swap_reverse[j+1] = p_swap_reverse[j]/(1+alpha*L_simul_reverse_swap[int(T_n/alpha)-1+j,-1])
+    R_swap_reverse, S_swap_reverse = fid.swap_rate_from_zcb_prices(0,0,T_N-T_n,"annual",T_swap,p_swap_reverse)
+    chi_disc[n,1] += S_swap_reverse*max(F_swap-R_swap_reverse,0)*(p_1Y_libor[T_N]/p_swap_reverse[-1])
     chi_disc_plot[n,1] = sum(chi_disc[0:n+1,1])/(n+1)
 
 price_receiver_swaption_regular = sum(chi_disc[:,0])/N_simul*10000
@@ -229,7 +240,6 @@ xticks = [0,1,2,3,4,5,7,10,15,20,30]
 ax.set_xticks(xticks)
 ax.set_xticklabels(xticks,fontsize = 6)
 ax.set_xlim([xticks[0]+-0.2,xticks[-1]+0.2])
-# ax.set_xlim([xticks[0]+-0.2,2+0.2])
 plt.xlabel(f"Maturity",fontsize = 6)
 ax.set_yticks([0,0.01,0.02,0.03,0.04,0.05,0.06])
 ax.set_yticklabels([0,0.01,0.02,0.03,0.04,0.05,0.06],fontsize = 6)
@@ -257,7 +267,6 @@ xticks = np.array([0,2,4,6,8,10])
 ax.set_xticks(xticks)
 ax.set_xticklabels(xticks,fontsize = 6)
 ax.set_xlim([xticks[0]+-0.2,xticks[-1]+0.2])
-# ax.set_xlim([xticks[0]+-0.2,2+0.2])
 plt.xlabel(f"Time",fontsize = 6)
 ax.set_yticks([0,0.02,0.04,0.06,0.08])
 ax.set_yticklabels([0,0.02,0.04,0.06,0.08],fontsize = 6)
@@ -266,7 +275,6 @@ plt.grid(axis = 'y', which='major', color=(0.7,0.7,0.7,0), linestyle='--')
 plots = []
 for i in range(0,N-1):
     p = ax.scatter(t_simul, L_simul_regular[i,:], s = 1, color = (0+i*0.1,0,1-i*0.1,1), marker = ".",label=f"L_{i+2*alpha}(t)")
-    # p = ax.scatter(t_simul, L_simul_regular[i,:], s = 1, color = (0,0,1-i*0.06,0), marker = ".",label=f"L_{i+1}(t)")
     plots.append(p)
 labels = [item.get_label() for item in plots]
 ax.legend(plots,labels,loc="lower right",fontsize = 6)
@@ -279,7 +287,6 @@ xticks = np.array([0,2,4,6,8,10])
 ax.set_xticks(xticks)
 ax.set_xticklabels(xticks,fontsize = 6)
 ax.set_xlim([xticks[0]+-0.2,xticks[-1]+0.2])
-# ax.set_xlim([xticks[0]+-0.2,2+0.2])
 plt.xlabel(f"Time",fontsize = 6)
 ax.set_yticks([0,0.02,0.04,0.06,0.08])
 ax.set_yticklabels([0,0.02,0.04,0.06,0.08],fontsize = 6)
@@ -288,8 +295,29 @@ plt.grid(axis = 'y', which='major', color=(0.7,0.7,0.7,0), linestyle='--')
 plots = []
 for i in range(0,N-1):
     p = ax.scatter(t_simul, L_simul_reverse[i,:], s = 1, color = (0+i*0.1,0,1-i*0.1,1), marker = ".",label=f"L_{i+2*alpha}(t)")
-    # p = ax.scatter(t_simul, L_simul_regular[i,:], s = 1, color = (0,0,1-i*0.06,0), marker = ".",label=f"L_{i+1}(t)")
     plots.append(p)
+labels = [item.get_label() for item in plots]
+ax.legend(plots,labels,loc="lower right",fontsize = 6)
+
+fig = plt.figure(constrained_layout=False, dpi = 300, figsize = (5,3))
+fig.suptitle(f"Convergence of receiver swaption price estimates", fontsize = 9)
+gs = fig.add_gridspec(nrows=1,ncols=1,left=0.12,bottom=0.2,right=0.88,top=0.90,wspace=0,hspace=0)
+ax = fig.add_subplot(gs[0,0])
+x_values = np.array([i for i in range(1,N_simul+1)])
+xticks = np.array([x_values[0],x_values[0]+(x_values[-1]-x_values[0])/4,x_values[0]+2*(x_values[-1]-x_values[0])/4,x_values[0]+3*(x_values[-1]-x_values[0])/4,x_values[-1]])
+ax.set_xticks(xticks)
+ax.set_xticklabels(xticks,fontsize = 6)
+ax.set_xlim([xticks[0]-x_values[-1]/20,xticks[-1]+x_values[-1]/20])
+plt.xlabel(f"Time",fontsize = 6)
+ax.set_yticks([0,100,200,300,400])
+ax.set_yticklabels([0,100,200,300,400],fontsize = 6)
+ax.set_ylim([0,420])
+plt.grid(axis = 'y', which='major', color=(0.7,0.7,0.7,0), linestyle='--')
+p1 = ax.plot(x_values, price_receiver_swaption_regular*np.ones(N_simul), linewidth = 1, color = "black",label=f"Regular price {np.round(price_receiver_swaption_regular,2)}")[0]
+p2 = ax.plot(x_values, price_receiver_swaption_reverse*np.ones(N_simul), linewidth = 1, color = "black",label=f"Reverse price {np.round(price_receiver_swaption_reverse,2)}")[0]
+p3 = ax.scatter(x_values, 10000*chi_disc_plot[:,0], s = 1, color = "red", marker = ".",label=f"Regular")
+p4 = ax.scatter(x_values, 10000*chi_disc_plot[:,1], s = 1, color = "blue", marker = ".",label=f"Reverse")
+plots = [p1,p2,p3,p4]
 labels = [item.get_label() for item in plots]
 ax.legend(plots,labels,loc="lower right",fontsize = 6)
 plt.show()
