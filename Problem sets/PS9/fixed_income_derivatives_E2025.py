@@ -478,10 +478,10 @@ def caplet_prices_vasicek(sigma,strike,a,T,p):
     price_caplet = np.zeros([len(T)])
     if type(strike) == int or type(strike) == float or type(strike) == np.int32 or type(strike) == np.int64 or type(strike) == np.float64:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],a,sigma,type_option = "put")
     elif type(strike) == tuple or type(strike) == list or type(strike) == np.ndarray:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],a,sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_vasicek(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],a,sigma,type_option = "put")
     return price_caplet
 
 def fit_vasicek_obj(param,R_star,T,scaling = 1):
@@ -931,10 +931,10 @@ def caplet_prices_ho_lee(sigma,strike,T,p):
     price_caplet = np.zeros([len(T)])
     if type(strike) == int or type(strike) == float or type(strike) == np.int32 or type(strike) == np.int64 or type(strike) == np.float64:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike)*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike),T[i-1],T[i],p[i-1],p[i],sigma,type_option = "put")
     elif type(strike) == tuple or type(strike) == list or type(strike) == np.ndarray:
         for i in range(2,len(T)):
-            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],sigma,type = "put")
+            price_caplet[i] = (1 + (T[i]-T[i-1])*strike[i])*euro_option_price_ho_lee(1/(1 + (T[i]-T[i-1])*strike[i]),T[i-1],T[i],p[i-1],p[i],sigma,type_option = "put")
     return price_caplet
 
 # Hull-White Extended Vasicek

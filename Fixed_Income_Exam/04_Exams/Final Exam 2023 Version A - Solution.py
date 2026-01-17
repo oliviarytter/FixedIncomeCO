@@ -6,64 +6,114 @@ import matplotlib.pyplot as plt
 
 
 # Problem 1
-def fit_cir_obj(param,sigma,R_star,T,scaling = 1):
-    r0, a, b = param
-    M = len(T)
-    R_fit = fid.spot_rate_cir(r0,a,b,sigma,T)
-    y = 0
-    for m in range(0,M):
-        y += scaling*(R_fit[m] - R_star[m])**2
-    return y
+
+def simulate_CIR_path(r0, a, b, sigma, T, M, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
+
+    dt = T / M
+    sqrt_dt = np.sqrt(dt)
+
+    r = np.zeros(M + 1)
+    r[0] = r0
+
+    for m in range(M):
+        Z = np.random.randn()
+        r[m+1] = (
+            r[m]
+            + a * (b - r[m]) * dt
+            + sigma * np.sqrt(max(r[m], 0)) * sqrt_dt * Z
+        )
+        r[m+1] = max(r[m+1], 0)
+
+    return r
 
 sigma = 0.08
 T = np.array([0.1,0.25,0.5,0.75,1,1.5,2,3,4,5,7,10])
 R_star = np.array([0.0334, 0.0352, 0.0375, 0.0392, 0.0405, 0.0422, 0.0433, 0.0445, 0.0451, 0.0455, 0.0459, 0.0462])
 # a)
 param_0 = 0.025, 1.5, 0.07
-result = minimize(fit_cir_obj,param_0,method = 'nelder-mead',args = (sigma,R_star,T),options={'xatol': 1e-8,'disp': True})
+result = minimize(simulate_CIR_path,param_0,method = 'nelder-mead',args = (sigma,R_star,T),options={'xatol': 1e-8,'disp': True})
 print(f"Parameter estimates (r0, a, b): {result.x}")
 print(f"Squared deviation from the fit: {result.fun} ")
 
 # b)
+def price_short_rate_derivative_CIR_MC(
+    r0, a, b, sigma,
+    T, M, N,
+    seed=None
+):
+    dt = T / M
+    prices = np.zeros(N)
+
+    for n in range(N):
+        r = simulate_CIR_path(r0, a, b, sigma, T, M, seed=None)
+
+        discount = np.exp(-dt * np.sum(r[:-1]))
+        payoff = np.max(r)
+
+        prices[n] = discount * payoff
+
+    return np.mean(prices)
+
+
+# b)
 r0, a, b = 0.032, 2, 0.047
-T_simul, M = 10,10000
-delta = T_simul/M
-t_simul = np.array([delta*i for i in range(0,M+1)])
-r_simul = fid.short_rate_simul(r0,(a,b,sigma),M,T_simul,method = "cir")
-fig = plt.figure(constrained_layout=False, dpi = 300, figsize = (5,3))   #
-fig.suptitle(f"Short rate in the CIR model (r_0 = 0.032, a = 2, b = 0.047, sigma = 0.08)", fontsize = 9)
-gs = fig.add_gridspec(nrows=1,ncols=1,left=0.12,bottom=0.2,right=0.88,top=0.90,wspace=0,hspace=0)
+sigma = 0.08
+
+T_simul, M = 10, 10000
+delta = T_simul / M
+t_simul = np.array([delta * i for i in range(M + 1)])
+
+r_simul = simulate_CIR_path(
+    r0, a, b, sigma,
+    T_simul, M,
+    seed=42
+)
+
+fig = plt.figure(constrained_layout=False, dpi=300, figsize=(5,3))
+fig.suptitle(
+    r"Short rate in the CIR model ($r_0=0.032, a=2, b=0.047, \sigma=0.08$)",
+    fontsize=9
+)
+
+gs = fig.add_gridspec(
+    nrows=1, ncols=1,
+    left=0.12, bottom=0.2, right=0.88, top=0.90
+)
+
 ax = fig.add_subplot(gs[0,0])
+
 xticks = [0,2,4,6,8,10]
 ax.set_xticks(xticks)
-ax.set_xticklabels(xticks,fontsize = 6)
-ax.set_xlim([xticks[0]-0.05,xticks[-1]+0.05])
-plt.xlabel(f"Time",fontsize = 6)
+ax.set_xticklabels(xticks, fontsize=6)
+ax.set_xlim([xticks[0]-0.05, xticks[-1]+0.05])
+
+ax.set_xlabel("Time", fontsize=6)
+
 ax.set_yticks([0,0.02,0.04,0.06,0.08,0.1])
-ax.set_yticklabels([0,0.02,0.04,0.06,0.08,0.1],fontsize = 6)
+ax.set_yticklabels([0,0.02,0.04,0.06,0.08,0.1], fontsize=6)
 ax.set_ylim([0,0.081])
-# ax.set_ylabel(f"",fontsize = 6)
-p1 = ax.scatter(t_simul, r_simul, s = 1, color = 'black', marker = ".",label="Short rate")
-plots = [p1]
-labels = [item.get_label() for item in plots]
-ax.legend(plots,labels,loc="upper right",fontsize = 6)
+
+p1 = ax.scatter(
+    t_simul, r_simul,
+    s=1, color="black", marker=".",
+    label="Short rate"
+)
+
+ax.legend(fontsize=6)
 plt.show()
-# fig.savefig("C:/Jacob/Uni_of_CPH/Interest rate derivatives/final_exam_2023/problem_1a.pdf")
-lb, ub = fid.ci_cir(r0,a,b,sigma,1,0.99,method = "two_sided")
-print(f"99 percent two-sided CI for r_1: {lb,ub}")
-alpha, beta = (2*a*b)/(sigma**2), sigma**2/(2*a)
-lb_sd, ub_sd = gamma.ppf(0.005, alpha, loc=0, scale=beta), gamma.ppf(0.995, alpha, loc=0, scale=beta)
-print(f"99 percent two-sided CI for r_t under the stationary distribution: {lb_sd,ub_sd}")
 
 # c)
 M_deriv, T_deriv = 1000, 2
 N_deriv = 10000
-X = np.zeros([N_deriv])
-for n in range(0,N_deriv):
-    r_simul = fid.short_rate_simul(r0,(a,b,sigma),M_deriv,T_deriv,method = "cir")
-    X[n] = np.exp(-(T_deriv/M_deriv)*sum(r_simul))*max(r_simul)
-pi = sum(X)/N_deriv
-print(f"Fair value of the derivative: {pi}")
+price = price_short_rate_derivative_CIR_MC(
+    r0, a, b, sigma,
+    T_deriv, M_deriv, N_deriv,
+    seed=42
+)
+
+print(f"Fair value of the derivative: {price}")
 
 # Investigating if the algorithm has converged - THIS WAS NOT REQUIRED AND STUDENTS ARE NOT PENALIZED IF THEY HAVE NOT DONE THIS!
 N_conv = np.array([1000,2000,3000,4000,5000,6000,7000,8000,9000,10000])
